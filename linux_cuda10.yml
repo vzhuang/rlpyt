@@ -2,6 +2,7 @@ name: rlpyt
 channels:
 - pytorch
 dependencies:
+- mujoco-py<2.1,>=2.0
 - python=3.7
 - pytorch=1.2
 - cudatoolkit=10.

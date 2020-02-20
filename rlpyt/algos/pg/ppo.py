@@ -56,6 +56,56 @@ class PPO(PolicyGradientAlgo):
                 lr_lambda=lambda itr: (self.n_itr - itr) / self.n_itr)  # Step once per itr.
             self._ratio_clip = self.ratio_clip  # Save base value.
 
+    def compute_grad_norms(self, samples):
+        """
+        Train the agent, for multiple epochs over minibatches taken from the
+        input samples.  Organizes agent inputs from the training data, and
+        moves them to device (e.g. GPU) up front, so that minibatches are
+        formed within device, without further data transfer.
+        """
+        recurrent = self.agent.recurrent
+        agent_inputs = AgentInputs(  # Move inputs to device once, index there.
+            observation=samples.env.observation,
+            prev_action=samples.agent.prev_action,
+            prev_reward=samples.env.prev_reward,
+        )
+        agent_inputs = buffer_to(agent_inputs, device=self.agent.device)
+        return_, advantage, valid = self.process_returns(samples)
+        loss_inputs = LossInputs(  # So can slice all.
+            agent_inputs=agent_inputs,
+            action=samples.agent.action,
+            return_=return_,
+            advantage=advantage,
+            valid=valid,
+            old_dist_info=samples.agent.agent_info.dist_info,
+        )
+        if recurrent:
+            # Leave in [B,N,H] for slicing to minibatches.
+            init_rnn_state = samples.agent.agent_info.prev_rnn_state[0]  # T=0.
+        T, B = samples.env.reward.shape[:2]
+        # If recurrent, use whole trajectories, only shuffle B; else shuffle all.
+        batch_size = B if self.agent.recurrent else T * B
+
+        grad_norms = []
+
+        for idxs in iterate_mb_idxs(batch_size, batch_size, shuffle=True):
+            T_idxs = slice(None) if recurrent else idxs % T
+            B_idxs = idxs if recurrent else idxs // T
+            self.optimizer.zero_grad()
+            rnn_state = init_rnn_state[B_idxs] if recurrent else None
+            # NOTE: if not recurrent, will lose leading T dim, should be OK.
+            loss, entropy, perplexity = self.loss(
+                *loss_inputs[T_idxs, B_idxs], rnn_state)
+            loss.backward()
+            grad_norm = torch.nn.utils.clip_grad_norm_(
+                self.agent.parameters(), self.clip_grad_norm)
+
+            grad_norms.append(grad_norm)
+            print('grad norm', grad_norm)
+            self.update_counter += 1
+
+        return grad_norms
+
     def optimize_agent(self, itr, samples):
         """
         Train the agent, for multiple epochs over minibatches taken from the

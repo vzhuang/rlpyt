@@ -4,6 +4,7 @@ import time
 import torch
 import math
 from collections import deque
+import numpy as np
 
 from rlpyt.runners.base import BaseRunner
 from rlpyt.utils.quick_args import save__init__args
@@ -253,6 +254,14 @@ class MinibatchRl(MinibatchRlBase):
         for itr in range(n_itr):
             logger.set_iteration(itr)
             with logger.prefix(f"itr #{itr} "):
+                if itr % 150 == 0:
+                    # try to log distribution gradient norm of agent
+                    grad_norms = []
+                    for i in range(5000):
+                        samples, traj_infos = self.sampler.obtain_samples(itr)
+                        norms = self.algo.compute_grad_norms(samples)
+                        grad_norms.extend(norms)
+                    np.save('/home/vincent/repos/rlpyt/log/gradnorms'+ str(itr) + '_' + str(self.seed), grad_norms)
                 self.agent.sample_mode(itr)  # Might not be this agent sampling.
                 samples, traj_infos = self.sampler.obtain_samples(itr)
                 self.agent.train_mode(itr)
