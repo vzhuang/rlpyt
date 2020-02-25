@@ -11,7 +11,7 @@ from rlpyt.utils.quick_args import save__init__args
 from rlpyt.utils.seed import set_seed, make_seed
 from rlpyt.utils.logging import logger
 from rlpyt.utils.prog_bar import ProgBarCounter
-
+from scipy.spatial.distance import cosine
 
 class MinibatchRlBase(BaseRunner):
     """
@@ -254,14 +254,30 @@ class MinibatchRl(MinibatchRlBase):
         for itr in range(n_itr):
             logger.set_iteration(itr)
             with logger.prefix(f"itr #{itr} "):
-                if itr % 150 == 0:
+                if itr % 100 == 0:
                     # try to log distribution gradient norm of agent
-                    grad_norms = []
-                    for i in range(5000):
+                    gradients = []
+                    num_iters = 2000
+                    for i in range(num_iters):
                         samples, traj_infos = self.sampler.obtain_samples(itr)
-                        norms = self.algo.compute_grad_norms(samples)
-                        grad_norms.extend(norms)
-                    np.save('/home/vincent/repos/rlpyt/log/gradnorms'+ str(itr) + '_' + str(self.seed), grad_norms)
+                        mb_grads = self.algo.compute_minibatch_gradients(samples)
+                        gradients.extend(mb_grads)
+                    # average all gradients
+                    mean_gradient = np.mean(np.array(gradients), axis=0)
+
+                    # compute gradient noises
+                    cosines = []
+                    grad_noise_norms = []
+                    for i in range(num_iters):
+                        noise = np.linalg.norm(gradients[i] - mean_gradient)
+                        grad_noise_norms.append(noise)
+                        cos = cosine(gradients[i], mean_gradient)
+                        cosines.append(cos)
+                    print(grad_noise_norms)
+                    np.save('/home/vincent/repos/rlpyt/log/gradnoisenorms' + str(itr) + '_' + str(self.seed),
+                            grad_noise_norms)
+                    np.save('/home/vincent/repos/rlpyt/log/cosines' + str(itr) + '_' + str(self.seed),
+                            cosines)
                 self.agent.sample_mode(itr)  # Might not be this agent sampling.
                 samples, traj_infos = self.sampler.obtain_samples(itr)
                 self.agent.train_mode(itr)

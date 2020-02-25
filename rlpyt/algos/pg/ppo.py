@@ -1,4 +1,4 @@
-
+import numpy as np
 import torch
 
 from rlpyt.algos.pg.base import PolicyGradientAlgo, OptInfo
@@ -56,7 +56,7 @@ class PPO(PolicyGradientAlgo):
                 lr_lambda=lambda itr: (self.n_itr - itr) / self.n_itr)  # Step once per itr.
             self._ratio_clip = self.ratio_clip  # Save base value.
 
-    def compute_grad_norms(self, samples):
+    def compute_minibatch_gradients(self, samples):
         """
         Train the agent, for multiple epochs over minibatches taken from the
         input samples.  Organizes agent inputs from the training data, and
@@ -86,7 +86,7 @@ class PPO(PolicyGradientAlgo):
         # If recurrent, use whole trajectories, only shuffle B; else shuffle all.
         batch_size = B if self.agent.recurrent else T * B
 
-        grad_norms = []
+        gradients = []
 
         for idxs in iterate_mb_idxs(batch_size, batch_size, shuffle=True):
             T_idxs = slice(None) if recurrent else idxs % T
@@ -97,14 +97,12 @@ class PPO(PolicyGradientAlgo):
             loss, entropy, perplexity = self.loss(
                 *loss_inputs[T_idxs, B_idxs], rnn_state)
             loss.backward()
-            grad_norm = torch.nn.utils.clip_grad_norm_(
-                self.agent.parameters(), self.clip_grad_norm)
+            gradient = np.concatenate([p.grad.data.cpu().numpy().flatten() for p in self.agent.parameters()]).ravel()
+            gradients.append(gradient)
 
-            grad_norms.append(grad_norm)
-            print('grad norm', grad_norm)
             self.update_counter += 1
 
-        return grad_norms
+        return gradients
 
     def optimize_agent(self, itr, samples):
         """
@@ -149,6 +147,8 @@ class PPO(PolicyGradientAlgo):
                 loss, entropy, perplexity = self.loss(
                     *loss_inputs[T_idxs, B_idxs], rnn_state)
                 loss.backward()
+
+                # do better clipping here.
                 grad_norm = torch.nn.utils.clip_grad_norm_(
                     self.agent.parameters(), self.clip_grad_norm)
                 self.optimizer.step()

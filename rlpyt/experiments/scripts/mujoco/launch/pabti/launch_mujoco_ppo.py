@@ -4,10 +4,10 @@ from rlpyt.utils.launching.exp_launcher import run_experiments
 from rlpyt.utils.launching.variant import make_variants, VariantLevel
 
 affinity_code = encode_affinity(
-    n_cpu_core=4,
+    n_cpu_core=8,
     n_gpu=1,
     contexts_per_gpu=1,
-    hyperthread_offset=24,
+    hyperthread_offset=None,
     n_socket=1,
     # cpu_per_run=2,
 )
@@ -15,7 +15,7 @@ runs_per_setting = 5
 variant_levels_1M = list()
 variant_levels_3M = list()
 
-n_steps = [1e6]
+n_steps = [3e6]
 values = list(zip(n_steps))
 dir_names = ["1M"]
 keys = [("runner", "n_steps")]
@@ -28,7 +28,7 @@ variant_levels_1M.append(VariantLevel(keys, values, dir_names))
 # variant_levels_3M.append(VariantLevel(keys, values, dir_names))
 
 
-env_ids = ["Hopper-v3"]
+env_ids = ["Walker2d-v2"]
 values = list(zip(env_ids))
 dir_names = ["{}".format(*v) for v in values]
 keys = [("env", "id")]
