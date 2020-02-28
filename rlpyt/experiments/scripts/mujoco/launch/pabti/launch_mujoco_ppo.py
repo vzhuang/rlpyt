@@ -15,10 +15,11 @@ runs_per_setting = 5
 variant_levels_1M = list()
 variant_levels_3M = list()
 
-n_steps = [3e6]
-values = list(zip(n_steps))
-dir_names = ["1M"]
-keys = [("runner", "n_steps")]
+n_steps = [1e6, 1e6, 1e6, 1e6]
+lrs = [1e-2, 5e-3, 2.5e-3, 5e-4]
+values = list(zip(n_steps, lrs))
+dir_names = ["{}-{}".format(*v) for v in values]
+keys = [("runner", "n_steps"), ("algo", "learning_rate")]
 variant_levels_1M.append(VariantLevel(keys, values, dir_names))
 
 # n_steps = [3e6]
@@ -47,7 +48,7 @@ variants = variants_1M #+ variants_3M
 log_dirs = log_dirs_1M #+ log_dirs_3M
 
 default_config_key = "ppo_1M_serial"
-script = "rlpyt/experiments/scripts/mujoco/pg/train/mujoco_ppo_serial.py"
+script = "rlpyt/experiments/scripts/mujoco/pg/train/mujoco_ff_ppo_gpu.py"
 experiment_title = "ppo_mujoco"
 
 run_experiments(

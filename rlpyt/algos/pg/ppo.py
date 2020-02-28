@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import random
 
 from rlpyt.algos.pg.base import PolicyGradientAlgo, OptInfo
 from rlpyt.agents.base import AgentInputs, AgentInputsRnn
@@ -37,11 +38,15 @@ class PPO(PolicyGradientAlgo):
             ratio_clip=0.1,
             linear_lr_schedule=True,
             normalize_advantage=False,
+            alpha=1.1,
+            clip_beta=0.99,
+            ac_clip=True
             ):
         """Saves input settings."""
         if optim_kwargs is None:
             optim_kwargs = dict()
         save__init__args(locals())
+        self.grad_clip = None
 
     def initialize(self, *args, **kwargs):
         """
@@ -83,8 +88,9 @@ class PPO(PolicyGradientAlgo):
             # Leave in [B,N,H] for slicing to minibatches.
             init_rnn_state = samples.agent.agent_info.prev_rnn_state[0]  # T=0.
         T, B = samples.env.reward.shape[:2]
+
         # If recurrent, use whole trajectories, only shuffle B; else shuffle all.
-        batch_size = B if self.agent.recurrent else T * B
+        batch_size = T * B if self.agent.recurrent else T * B
 
         gradients = []
 
@@ -97,6 +103,10 @@ class PPO(PolicyGradientAlgo):
             loss, entropy, perplexity = self.loss(
                 *loss_inputs[T_idxs, B_idxs], rnn_state)
             loss.backward()
+            # for i, p in enumerate(self.agent.parameters()):
+            #     print(i, p.grad)
+            # print([p for p in self.agent.parameters()])
+            # print([p for p in len(self.agent.parameters())])
             gradient = np.concatenate([p.grad.data.cpu().numpy().flatten() for p in self.agent.parameters()]).ravel()
             gradients.append(gradient)
 
@@ -149,8 +159,9 @@ class PPO(PolicyGradientAlgo):
                 loss.backward()
 
                 # do better clipping here.
-                grad_norm = torch.nn.utils.clip_grad_norm_(
-                    self.agent.parameters(), self.clip_grad_norm)
+                grad_norm = self.coordinatewise_clip_grad_norm_(self.agent.parameters())
+                # grad_norm = torch.nn.utils.clip_grad_norm_(
+                #     self.agent.parameters(), self.clip_grad_norm)
                 self.optimizer.step()
 
                 opt_info.loss.append(loss.item())
@@ -163,6 +174,41 @@ class PPO(PolicyGradientAlgo):
             self.ratio_clip = self._ratio_clip * (self.n_itr - itr) / self.n_itr
 
         return opt_info
+
+    def coordinatewise_clip_grad_norm_(self, parameters):
+        r"""Clips gradient norm of an iterable of parameters.
+
+        The norm is computed over all gradients together, as if they were
+        concatenated into a single vector. Gradients are modified in-place.
+
+        Arguments:
+            parameters (Iterable[Tensor] or Tensor): an iterable of Tensors or a
+                single Tensor that will have gradients normalized
+            max_norm (float or int): max norm of the gradients
+            norm_type (float or int): type of the used p-norm. Can be ``'inf'`` for
+                infinity norm.
+
+        """
+        if isinstance(parameters, torch.Tensor):
+            parameters = [parameters]
+        parameters = list(filter(lambda p: p.grad is not None, parameters))
+        if self.grad_clip is None:
+            self.grad_clip = [p.grad.data.abs() for p in parameters]
+        else:
+            self.grad_clip = [(self.clip_beta * self.grad_clip[i].abs().pow(self.alpha) + \
+                               (1 - self.clip_beta) * p.grad.data.abs().pow(self.alpha)).pow(1. / self.alpha)
+                              for i, p in enumerate(parameters)]
+        # print(self.grad_clip)
+        should_print = random.random() < 0.0000025
+        for i, p in enumerate(parameters):
+            div = torch.add(p.grad.data.abs(), 1e-6)
+            ratio = torch.div(self.grad_clip[i], div)
+            min = torch.min(ratio, torch.ones(ratio.size()).cuda())
+            if should_print:
+                print(min)
+            p.grad.data.mul_(min)
+
+        return torch.nn.utils.clip_grad_norm_(parameters, 1e12)
 
     def loss(self, agent_inputs, action, return_, advantage, valid, old_dist_info,
             init_rnn_state=None):

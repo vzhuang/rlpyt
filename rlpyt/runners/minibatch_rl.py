@@ -254,14 +254,15 @@ class MinibatchRl(MinibatchRlBase):
         for itr in range(n_itr):
             logger.set_iteration(itr)
             with logger.prefix(f"itr #{itr} "):
-                if itr % 100 == 0:
+                if itr > 1 and itr % 1500 == 0:
                     # try to log distribution gradient norm of agent
                     gradients = []
-                    num_iters = 2000
+                    num_iters = 1000
                     for i in range(num_iters):
                         samples, traj_infos = self.sampler.obtain_samples(itr)
                         mb_grads = self.algo.compute_minibatch_gradients(samples)
                         gradients.extend(mb_grads)
+                        print('grad', i)
                     # average all gradients
                     mean_gradient = np.mean(np.array(gradients), axis=0)
 

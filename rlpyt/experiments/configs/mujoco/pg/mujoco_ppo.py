@@ -7,7 +7,7 @@ config = dict(
     agent=dict(),
     algo=dict(
         discount=0.99,
-        learning_rate=1e-4,
+        learning_rate=1e-3,
         clip_grad_norm=1.0e6,
         entropy_loss_coeff=0.0,
         gae_lambda=0.95,
@@ -16,6 +16,9 @@ config = dict(
         ratio_clip=0.2,
         normalize_advantage=True,
         linear_lr_schedule=True,
+        alpha=1.1,
+        ac_clip=True,
+        clip_beta=0.99,
         # bootstrap_timelimit=False,
     ),
     env=dict(id="Hopper-v3"),

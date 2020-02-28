@@ -31,7 +31,7 @@ keys = [("runner", "n_steps")]
 variant_levels_3M.append(VariantLevel(keys, values, dir_names))
 
 
-env_ids = ["Hopper-v3", "Walker2d-v3"]
+env_ids = ["Walker2d-v2"]
 values = list(zip(env_ids))
 dir_names = ["{}".format(*v) for v in values]
 keys = [("env", "id")]
