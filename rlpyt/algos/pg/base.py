@@ -1,10 +1,12 @@
+import numpy as np
 
-# import torch
+import torch
 from collections import namedtuple
 
 from rlpyt.algos.base import RlAlgorithm
 from rlpyt.algos.utils import (discount_return, generalized_advantage_estimation,
     valid_from_done)
+from rlpyt.utils.RunningMeanStd import RunningMeanStd
 
 # Convention: traj_info fields CamelCase, opt_info fields lowerCamelCase
 OptInfo = namedtuple("OptInfo", ["loss", "piLoss", "valueLoss", "gradNorm", "entropy", "perplexity"])
@@ -35,6 +37,8 @@ class PolicyGradientAlgo(RlAlgorithm):
         self.n_itr = n_itr
         self.batch_spec = batch_spec
         self.mid_batch_reset = mid_batch_reset
+        self.ret_rms = RunningMeanStd(shape=())
+        self.rets = None
 
     def process_returns(self, samples):
         """
@@ -47,6 +51,15 @@ class PolicyGradientAlgo(RlAlgorithm):
         reward, done, value, bv = (samples.env.reward, samples.env.done,
             samples.agent.agent_info.value, samples.agent.bootstrap_value)
         done = done.type(reward.dtype)
+
+        if self.rets is None:
+            self.rets = np.zeros(len(reward))
+
+        self.rets = self.rets * self.discount + reward.numpy()
+
+        self.ret_rms.update(self.rets)
+
+        reward = torch.div(reward, np.mean(np.sqrt(self.ret_rms.var + 1e-8)))
 
         if self.gae_lambda == 1:  # GAE reduces to empirical discounted.
             return_ = discount_return(reward, done, bv, self.discount)
