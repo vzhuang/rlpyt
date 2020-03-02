@@ -254,7 +254,7 @@ class MinibatchRl(MinibatchRlBase):
         for itr in range(n_itr):
             logger.set_iteration(itr)
             with logger.prefix(f"itr #{itr} "):
-                if itr > 1 and itr % 1500 == 0:
+                if itr % 150 == 0:
                     # try to log distribution gradient norm of agent
                     gradients = []
                     num_iters = 1000

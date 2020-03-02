@@ -76,11 +76,12 @@ class PPO(PolicyGradientAlgo):
             prev_reward=samples.env.prev_reward,
         )
         agent_inputs = buffer_to(agent_inputs, device=self.agent.device)
-        return_, advantage, valid = self.process_returns(samples)
+        return_, advantage, valid, value = self.process_returns(samples)
         loss_inputs = LossInputs(  # So can slice all.
             agent_inputs=agent_inputs,
             action=samples.agent.action,
             return_=return_,
+            old_value=value,
             advantage=advantage,
             valid=valid,
             old_dist_info=samples.agent.agent_info.dist_info,
