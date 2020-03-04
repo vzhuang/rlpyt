@@ -254,10 +254,10 @@ class MinibatchRl(MinibatchRlBase):
         for itr in range(n_itr):
             logger.set_iteration(itr)
             with logger.prefix(f"itr #{itr} "):
-                if itr % 150 == 0:
+                if itr > 1 and itr % 15000 == 0:
                     # try to log distribution gradient norm of agent
                     gradients = []
-                    num_iters = 1000
+                    num_iters = 500
                     for i in range(num_iters):
                         samples, traj_infos = self.sampler.obtain_samples(itr)
                         mb_grads = self.algo.compute_minibatch_gradients(samples)
@@ -275,9 +275,9 @@ class MinibatchRl(MinibatchRlBase):
                         cos = cosine(gradients[i], mean_gradient)
                         cosines.append(cos)
                     print(grad_noise_norms)
-                    np.save('/home/vincent/repos/rlpyt/log/gradnoisenorms' + str(itr) + '_' + str(self.seed),
+                    np.save('/home/vincent/Documents/rlpyt/log/gradnoisenorms' + str(itr) + '_' + str(self.seed),
                             grad_noise_norms)
-                    np.save('/home/vincent/repos/rlpyt/log/cosines' + str(itr) + '_' + str(self.seed),
+                    np.save('/home/vincent/Documents/rlpyt/log/cosines' + str(itr) + '_' + str(self.seed),
                             cosines)
                 self.agent.sample_mode(itr)  # Might not be this agent sampling.
                 samples, traj_infos = self.sampler.obtain_samples(itr)

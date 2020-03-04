@@ -26,13 +26,14 @@ config = dict(
     model=dict(normalize_observation=False),
     optim=dict(),
     runner=dict(
-        n_steps=1e6,
+        n_steps=3e6,
         log_interval_steps=2048 * 10,
     ),
     sampler=dict(
         batch_T=2048,
         batch_B=1,
         max_decorrelation_steps=0,
+        discount=0.99,
     ),
 )
 

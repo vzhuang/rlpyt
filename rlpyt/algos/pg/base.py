@@ -48,18 +48,25 @@ class PolicyGradientAlgo(RlAlgorithm):
         according to ``mid_batch_reset`` or for recurrent agent.  Optionally,
         normalize advantages.
         """
-        reward, done, value, bv = (samples.env.reward, samples.env.done,
-            samples.agent.agent_info.value, samples.agent.bootstrap_value)
+        reward, done, value, bv, discounted_return = (samples.env.reward, samples.env.done,
+            samples.agent.agent_info.value, samples.agent.bootstrap_value, samples.env.discounted_return)
         done = done.type(reward.dtype)
+
+        print()
+        print('discounted return', discounted_return)
 
         if self.rets is None:
             self.rets = np.zeros(len(reward))
 
-        self.rets = self.rets * self.discount + reward.numpy()
+        self.rets = discounted_return.numpy() + reward.numpy()
 
         self.ret_rms.update(self.rets)
+        self.rets[done.numpy().astype(int)] = 0
 
         reward = torch.div(reward, np.mean(np.sqrt(self.ret_rms.var + 1e-8)))
+
+        print('rets', self.rets)
+        print('std', np.mean(np.sqrt(self.ret_rms.var + 1e-8)))
 
         if self.gae_lambda == 1:  # GAE reduces to empirical discounted.
             return_ = discount_return(reward, done, bv, self.discount)

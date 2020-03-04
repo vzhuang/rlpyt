@@ -22,6 +22,7 @@ class BaseCollector:
             step_buffer_np=None,
             global_B=1,
             env_ranks=None,
+            discount=1.
             ):
         save__init__args(locals())
 

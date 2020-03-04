@@ -76,7 +76,7 @@ class PPO(PolicyGradientAlgo):
             prev_reward=samples.env.prev_reward,
         )
         agent_inputs = buffer_to(agent_inputs, device=self.agent.device)
-        return_, advantage, valid, value = self.process_returns(samples)
+        return_, advantage, valid, value = self.process_returns(samples, traj_infos)
         loss_inputs = LossInputs(  # So can slice all.
             agent_inputs=agent_inputs,
             action=samples.agent.action,
@@ -142,7 +142,7 @@ class PPO(PolicyGradientAlgo):
             valid=valid,
             old_dist_info=samples.agent.agent_info.dist_info,
         )
-        print('old value', value.data.flatten())
+
         if recurrent:
             # Leave in [B,N,H] for slicing to minibatches.
             init_rnn_state = samples.agent.agent_info.prev_rnn_state[0]  # T=0.

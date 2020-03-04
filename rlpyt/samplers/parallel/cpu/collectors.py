@@ -22,12 +22,12 @@ class CpuResetCollector(DecorrelatingStartCollector):
 
     mid_batch_reset = True
 
-    def collect_batch(self, agent_inputs, traj_infos, itr):
+    def collect_batch(self, agent_inputs, traj_infos, itr, discount=1.):
         # Numpy arrays can be written to from numpy arrays or torch tensors
         # (whereas torch tensors can only be written to from torch tensors).
         agent_buf, env_buf = self.samples_np.agent, self.samples_np.env
         completed_infos = list()
-        observation, action, reward = agent_inputs
+        observation, action, reward = agent_inputs  # over b environments
         obs_pyt, act_pyt, rew_pyt = torchify_buffer(agent_inputs)
         agent_buf.prev_action[0] = action  # Leading prev_action.
         env_buf.prev_reward[0] = reward
@@ -55,6 +55,10 @@ class CpuResetCollector(DecorrelatingStartCollector):
                     env_buf.env_info[t, b] = env_info
             agent_buf.action[t] = action
             env_buf.reward[t] = reward
+            if t == 0:
+                env_buf.discounted_return[t] = reward
+            else:
+                env_buf.discounted_return[t] = (env_buf.discounted_return[t-1] * (1 - env_buf.done[t-1])) * discount + reward
             if agent_info:
                 agent_buf.agent_info[t] = agent_info
 

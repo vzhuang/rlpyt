@@ -30,6 +30,7 @@ class SerialSampler(BaseSampler):
             traj_info_kwargs=None,
             rank=0,
             world_size=1,
+            discount=1.,
             ):
         """Store the input arguments.  Instantiate the specified number of environment
         instances (``batch_B``).  Initialize the agent, and pre-allocate a memory buffer
@@ -51,7 +52,7 @@ class SerialSampler(BaseSampler):
             global_B=global_B, env_ranks=env_ranks)
         samples_pyt, samples_np, examples = build_samples_buffer(agent, envs[0],
             self.batch_spec, bootstrap_value, agent_shared=False,
-            env_shared=False, subprocess=False)
+            env_shared=False, subprocess=False, discount=discount)
         if traj_info_kwargs:
             for k, v in traj_info_kwargs.items():
                 setattr(self.TrajInfoCls, "_" + k, v)  # Avoid passing at init.

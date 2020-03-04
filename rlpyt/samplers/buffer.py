@@ -9,7 +9,7 @@ from rlpyt.samplers.collections import (Samples, AgentSamples, AgentSamplesBsv,
 
 
 def build_samples_buffer(agent, env, batch_spec, bootstrap_value=False,
-        agent_shared=True, env_shared=True, subprocess=True, examples=None):
+        agent_shared=True, env_shared=True, subprocess=True, examples=None, discount=1.):
     """Recommended to step/reset agent and env in subprocess, so it doesn't
     affect settings in master before forking workers (e.g. torch num_threads
     (MKL) may be set at first forward computation.)"""
@@ -18,12 +18,12 @@ def build_samples_buffer(agent, env, batch_spec, bootstrap_value=False,
             mgr = mp.Manager()
             examples = mgr.dict()  # Examples pickled back to master.
             w = mp.Process(target=get_example_outputs,
-                args=(agent, env, examples, subprocess))
+                args=(agent, env, examples, subprocess), kwargs=(discount))
             w.start()
             w.join()
         else:
             examples = dict()
-            get_example_outputs(agent, env, examples)
+            get_example_outputs(agent, env, examples, discount=discount)
 
     T, B = batch_spec
     all_action = buffer_from_example(examples["action"], (T + 1, B), agent_shared)
@@ -41,6 +41,7 @@ def build_samples_buffer(agent, env, batch_spec, bootstrap_value=False,
 
     observation = buffer_from_example(examples["observation"], (T, B), env_shared)
     all_reward = buffer_from_example(examples["reward"], (T + 1, B), env_shared)
+    discounted_return = buffer_from_example(examples["discounted_return"], (T, B), env_shared)
     reward = all_reward[1:]
     prev_reward = all_reward[:-1]  # Writing to reward will populate prev_reward.
     done = buffer_from_example(examples["done"], (T, B), env_shared)
@@ -51,13 +52,15 @@ def build_samples_buffer(agent, env, batch_spec, bootstrap_value=False,
         prev_reward=prev_reward,
         done=done,
         env_info=env_info,
+        discounted_return=discounted_return
     )
+    print('hell yeah created env buffer')
     samples_np = Samples(agent=agent_buffer, env=env_buffer)
     samples_pyt = torchify_buffer(samples_np)
     return samples_pyt, samples_np, examples
 
 
-def get_example_outputs(agent, env, examples, subprocess=False):
+def get_example_outputs(agent, env, examples, subprocess=False, discount=1.):
     """Do this in a sub-process to avoid setup conflict in master/workers (e.g.
     MKL)."""
     if subprocess:  # i.e. in subprocess.
@@ -65,6 +68,7 @@ def get_example_outputs(agent, env, examples, subprocess=False):
         torch.set_num_threads(1)  # Some fix to prevent MKL hang.
     o = env.reset()
     a = env.action_space.sample()
+    discounted_return = 0.
     o, r, d, env_info = env.step(a)
     r = np.asarray(r, dtype="float32")  # Must match torch float dtype here.
     agent.reset()
@@ -75,6 +79,7 @@ def get_example_outputs(agent, env, examples, subprocess=False):
         agent_info = agent_info._replace(prev_rnn_state=agent_info.prev_rnn_state[0])
     examples["observation"] = o
     examples["reward"] = r
+    examples["discounted_return"] = r * discount
     examples["done"] = d
     examples["env_info"] = env_info
     examples["action"] = a  # OK to put torch tensor here, could numpify.

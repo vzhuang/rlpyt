@@ -15,7 +15,7 @@ runs_per_setting = 5
 variant_levels_1M = list()
 variant_levels_3M = list()
 
-n_steps = [1e6]
+n_steps = [3e6]
 lrs = [3e-4]
 values = list(zip(n_steps, lrs))
 dir_names = ["{}-{}".format(*v) for v in values]
@@ -48,8 +48,8 @@ variants = variants_1M #+ variants_3M
 log_dirs = log_dirs_1M #+ log_dirs_3M
 
 default_config_key = "ppo_1M_serial"
-script = "rlpyt/experiments/scripts/mujoco/pg/train/mujoco_ppo_serial.py"
-experiment_title = "ppo_mujoco"
+script = "rlpyt/experiments/scripts/mujoco/pg/train/mujoco_ff_ppo_serial.py"
+experiment_title = "ppo_mujoco_actual_both_norm_long"
 
 run_experiments(
     script=script,
