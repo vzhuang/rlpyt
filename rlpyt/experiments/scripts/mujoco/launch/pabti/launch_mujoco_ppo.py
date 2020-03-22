@@ -15,7 +15,7 @@ runs_per_setting = 5
 variant_levels_1M = list()
 variant_levels_3M = list()
 
-n_steps = [3e6]
+n_steps = [1e6]
 lrs = [3e-4]
 values = list(zip(n_steps, lrs))
 dir_names = ["{}-{}".format(*v) for v in values]
@@ -29,7 +29,7 @@ variant_levels_1M.append(VariantLevel(keys, values, dir_names))
 # variant_levels_3M.append(VariantLevel(keys, values, dir_names))
 
 
-env_ids = ["Walker2d-v2"]
+env_ids = ["Hopper-v2", "Swimmer-v2"]
 values = list(zip(env_ids))
 dir_names = ["{}".format(*v) for v in values]
 keys = [("env", "id")]

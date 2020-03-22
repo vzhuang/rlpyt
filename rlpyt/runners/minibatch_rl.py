@@ -254,15 +254,29 @@ class MinibatchRl(MinibatchRlBase):
         for itr in range(n_itr):
             logger.set_iteration(itr)
             with logger.prefix(f"itr #{itr} "):
-                if itr > 1 and itr % 15000 == 0:
+                if itr % 100 == 0:
                     # try to log distribution gradient norm of agent
                     gradients = []
-                    num_iters = 500
+                    all_value_diffs = []
+                    all_ratios = []
+                    all_rewards = []
+                    all_unnorm_rewards = []
+
+                    num_iters = 400
+                    all_returns = []
                     for i in range(num_iters):
                         samples, traj_infos = self.sampler.obtain_samples(itr)
-                        mb_grads = self.algo.compute_minibatch_gradients(samples)
+                        returns = [ti.Return for ti in traj_infos]
+                        all_returns.extend(returns)
+                        mb_grads, value_diffs, ratios, norm_rewards, unnorm_rewards = self.algo.compute_minibatch_gradients(samples)
                         gradients.extend(mb_grads)
-                        print('grad', i)
+                        all_value_diffs.extend(value_diffs)
+                        all_rewards.extend(norm_rewards.numpy())
+                        all_unnorm_rewards.extend(unnorm_rewards.numpy())
+                        # all_ratios.extend(ratios)
+                        # print('ratios', all_ratios)
+                        if i % 10 == 0:
+                            print('grad', i)
                     # average all gradients
                     mean_gradient = np.mean(np.array(gradients), axis=0)
 
@@ -275,14 +289,28 @@ class MinibatchRl(MinibatchRlBase):
                         cos = cosine(gradients[i], mean_gradient)
                         cosines.append(cos)
                     print(grad_noise_norms)
-                    np.save('/home/vincent/Documents/rlpyt/log/gradnoisenorms' + str(itr) + '_' + str(self.seed),
+                    np.save('/home/vincent/repos/rlpyt/log/gradnoisenorms' + str(itr) + '_' + str(self.seed),
                             grad_noise_norms)
-                    np.save('/home/vincent/Documents/rlpyt/log/cosines' + str(itr) + '_' + str(self.seed),
+                    np.save('/home/vincent/repos/rlpyt/log/cosines' + str(itr) + '_' + str(self.seed),
                             cosines)
+                    np.save('/home/vincent/repos/rlpyt/log/value_diffs' + str(itr) + '_' + str(self.seed),
+                            value_diffs)
+                    np.save('/home/vincent/repos/rlpyt/log/norm_rewards' + str(itr) + '_' + str(self.seed),
+                            all_rewards)
+                    np.save('/home/vincent/repos/rlpyt/log/unnorm_rewards' + str(itr) + '_' + str(self.seed),
+                            all_unnorm_rewards)
+                    np.save('/home/vincent/repos/rlpyt/log/returns' + str(itr) + '_' + str(self.seed),
+                            all_returns)
+
                 self.agent.sample_mode(itr)  # Might not be this agent sampling.
                 samples, traj_infos = self.sampler.obtain_samples(itr)
                 self.agent.train_mode(itr)
-                opt_info = self.algo.optimize_agent(itr, samples)
+                opt_info, ratios, rews = self.algo.optimize_agent(itr, samples)
+                if itr % 10 == 0:
+                    np.save('/home/vincent/repos/rlpyt/log/adv_ratios' + str(itr) + '_' + str(self.seed),
+                            ratios)
+                    # np.save('/home/vincent/repos/rlpyt/log/rewards' + str(itr) + '_' + str(self.seed),
+                    #         rews.numpy())
                 self.store_diagnostics(itr, traj_infos, opt_info)
                 if (itr + 1) % self.log_interval_itrs == 0:
                     self.log_diagnostics(itr)

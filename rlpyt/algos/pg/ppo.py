@@ -76,7 +76,7 @@ class PPO(PolicyGradientAlgo):
             prev_reward=samples.env.prev_reward,
         )
         agent_inputs = buffer_to(agent_inputs, device=self.agent.device)
-        return_, advantage, valid, value = self.process_returns(samples, traj_infos)
+        return_, advantage, valid, value, reward, pre_reward = self.process_returns(samples)
         loss_inputs = LossInputs(  # So can slice all.
             agent_inputs=agent_inputs,
             action=samples.agent.action,
@@ -95,6 +95,8 @@ class PPO(PolicyGradientAlgo):
         batch_size = T * B if self.agent.recurrent else T * B
 
         gradients = []
+        all_value_diffs = []
+        all_ratios = []
 
         for idxs in iterate_mb_idxs(batch_size, batch_size, shuffle=True):
             T_idxs = slice(None) if recurrent else idxs % T
@@ -102,7 +104,7 @@ class PPO(PolicyGradientAlgo):
             self.optimizer.zero_grad()
             rnn_state = init_rnn_state[B_idxs] if recurrent else None
             # NOTE: if not recurrent, will lose leading T dim, should be OK.
-            loss, pi_loss, value_loss, entropy, perplexity = self.loss(
+            loss, pi_loss, value_loss, entropy, perplexity, value_diffs, ratio = self.loss(
                 *loss_inputs[T_idxs, B_idxs], rnn_state)
             loss.backward()
             # for i, p in enumerate(self.agent.parameters()):
@@ -111,10 +113,11 @@ class PPO(PolicyGradientAlgo):
             # print([p for p in len(self.agent.parameters())])
             gradient = np.concatenate([p.grad.data.cpu().numpy().flatten() for p in self.agent.parameters()]).ravel()
             gradients.append(gradient)
-
+            all_value_diffs.extend(value_diffs.detach().numpy().flatten())
+            all_ratios.extend(ratio.detach().numpy().flatten())
             self.update_counter += 1
 
-        return gradients
+        return gradients, all_value_diffs, all_ratios, reward, pre_reward
 
     def optimize_agent(self, itr, samples):
         """
@@ -130,6 +133,7 @@ class PPO(PolicyGradientAlgo):
             prev_reward=samples.env.prev_reward,
         )
         agent_inputs = buffer_to(agent_inputs, device=self.agent.device)
+        return_, advantage, valid, value, reward, pre_reward = self.process_returns(samples)
         if hasattr(self.agent, "update_obs_rms"):
             self.agent.update_obs_rms(agent_inputs.observation)
         return_, advantage, valid, value = self.process_returns(samples)
@@ -151,6 +155,7 @@ class PPO(PolicyGradientAlgo):
         # If recurrent, use whole trajectories, only shuffle B; else shuffle all.
         batch_size = B if self.agent.recurrent else T * B
         mb_size = batch_size // self.minibatches
+        ratios = []
         for _ in range(self.epochs):
             for idxs in iterate_mb_idxs(batch_size, mb_size, shuffle=True):
                 T_idxs = slice(None) if recurrent else idxs % T
@@ -158,9 +163,10 @@ class PPO(PolicyGradientAlgo):
                 self.optimizer.zero_grad()
                 rnn_state = init_rnn_state[B_idxs] if recurrent else None
                 # NOTE: if not recurrent, will lose leading T dim, should be OK.
-                loss, pi_loss, value_loss, entropy, perplexity = self.loss(
+                loss, pi_loss, value_loss, entropy, perplexity, value_diff, ratio = self.loss(
                     *loss_inputs[T_idxs, B_idxs], rnn_state)
                 loss.backward()
+                ratios.extend(ratio.detach().numpy().flatten())
 
                 # do better clipping here.
                 if self.ac_clip:
@@ -181,7 +187,7 @@ class PPO(PolicyGradientAlgo):
             self.lr_scheduler.step()
             self.ratio_clip = self._ratio_clip * (self.n_itr - itr) / self.n_itr
 
-        return opt_info
+        return opt_info, ratios, samples.env.prev_reward
 
     def coordinatewise_clip_grad_norm_(self, parameters):
         """Clips gradient norm of an iterable of parameters.
@@ -248,6 +254,7 @@ class PPO(PolicyGradientAlgo):
 
         value_error1 = 0.5 * (value - return_) ** 2
         # clip by old_values
+        value_diff = value - old_value
         clipped_value = old_value + torch.clamp(value - old_value, -self.ratio_clip, self.ratio_clip)
         value_error1 = 0.5 * (value - return_) ** 2
         value_error2 = 0.5 * (clipped_value - return_) ** 2
@@ -264,4 +271,4 @@ class PPO(PolicyGradientAlgo):
         loss = pi_loss + value_loss + entropy_loss
 
         perplexity = dist.mean_perplexity(dist_info, valid)
-        return loss, pi_loss, value_loss, entropy, perplexity
+        return loss, pi_loss, value_loss, entropy, perplexity, value_diff, ratio

@@ -63,6 +63,8 @@ class PolicyGradientAlgo(RlAlgorithm):
         self.ret_rms.update(self.rets)
         self.rets[done.numpy().astype(int)] = 0
 
+        pre_reward = reward
+
         reward = torch.div(reward, np.mean(np.sqrt(self.ret_rms.var + 1e-8)))
 
         print('rets', self.rets)
@@ -90,4 +92,4 @@ class PolicyGradientAlgo(RlAlgorithm):
                 adv_std = advantage.std()
             advantage[:] = (advantage - adv_mean) / max(adv_std, 1e-6)
 
-        return return_, advantage, valid, value
+        return return_, advantage, valid, value, reward, pre_reward
