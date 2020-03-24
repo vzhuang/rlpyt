@@ -94,7 +94,8 @@ class PPO(PolicyGradientAlgo):
         # If recurrent, use whole trajectories, only shuffle B; else shuffle all.
         batch_size = T * B if self.agent.recurrent else T * B
 
-        gradients = []
+        policy_gradients = []
+        value_gradients = []
         all_value_diffs = []
         all_ratios = []
 
@@ -109,15 +110,20 @@ class PPO(PolicyGradientAlgo):
             loss.backward()
             # for i, p in enumerate(self.agent.parameters()):
             #     print(i, p.grad)
-            # print([p for p in self.agent.parameters()])
-            # print([p for p in len(self.agent.parameters())])
-            gradient = np.concatenate([p.grad.data.cpu().numpy().flatten() for p in self.agent.parameters()]).ravel()
-            gradients.append(gradient)
+            # print([(i, p.shape) for i, p in enumerate(self.agent.parameters())])
+            # first 7 is policy, last 6 is value network
+            params = [p.grad.data.cpu().numpy().flatten() for p in self.agent.parameters()]
+            pg = np.concatenate(params[:7]).ravel()
+            vg = np.concatenate(params[7:]).ravel()
+            policy_gradients.append(pg)
+            value_gradients.append(vg)
+            # gradient = np.concatenate([p.grad.data.cpu().numpy().flatten() for p in self.agent.parameters()]).ravel()
+            # gradients.append(gradient)
             all_value_diffs.extend(value_diffs.detach().numpy().flatten())
             all_ratios.extend(ratio.detach().numpy().flatten())
             self.update_counter += 1
 
-        return gradients, all_value_diffs, all_ratios, reward, pre_reward
+        return policy_gradients, value_gradients, all_value_diffs, all_ratios, reward, pre_reward
 
     def optimize_agent(self, itr, samples):
         """

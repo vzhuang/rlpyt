@@ -256,7 +256,9 @@ class MinibatchRl(MinibatchRlBase):
             with logger.prefix(f"itr #{itr} "):
                 if itr % 100 == 0:
                     # try to log distribution gradient norm of agent
-                    gradients = []
+                    # gradients = []
+                    policy_gradients = []
+                    value_gradients = []
                     all_value_diffs = []
                     all_ratios = []
                     all_rewards = []
@@ -268,8 +270,12 @@ class MinibatchRl(MinibatchRlBase):
                         samples, traj_infos = self.sampler.obtain_samples(itr)
                         returns = [ti.Return for ti in traj_infos]
                         all_returns.extend(returns)
-                        mb_grads, value_diffs, ratios, norm_rewards, unnorm_rewards = self.algo.compute_minibatch_gradients(samples)
-                        gradients.extend(mb_grads)
+                        # mb_grads, value_diffs, ratios, norm_rewards, unnorm_rewards = self.algo.compute_minibatch_gradients(samples)
+                        # gradients.extend(mb_grads)
+                        p_grads, v_grads, value_diffs, ratios, norm_rewards, unnorm_rewards = self.algo.compute_minibatch_gradients(samples)
+                        policy_gradients.extend(p_grads)
+                        value_gradients.extend(v_grads)
+
                         all_value_diffs.extend(value_diffs)
                         all_rewards.extend(norm_rewards.numpy())
                         all_unnorm_rewards.extend(unnorm_rewards.numpy())
@@ -278,21 +284,36 @@ class MinibatchRl(MinibatchRlBase):
                         if i % 10 == 0:
                             print('grad', i)
                     # average all gradients
-                    mean_gradient = np.mean(np.array(gradients), axis=0)
+                    # mean_gradient = np.mean(np.array(gradients), axis=0)
+                    mean_p_grad = np.mean(np.array(policy_gradients), axis=0)
+                    mean_v_grad = np.mean(np.array(value_gradients), axis=0)
 
                     # compute gradient noises
-                    cosines = []
-                    grad_noise_norms = []
+                    p_cosines = []
+                    p_grad_noise_norms = []
+                    v_cosines = []
+                    v_grad_noise_norms = []
                     for i in range(num_iters):
-                        noise = np.linalg.norm(gradients[i] - mean_gradient)
-                        grad_noise_norms.append(noise)
-                        cos = cosine(gradients[i], mean_gradient)
-                        cosines.append(cos)
-                    print(grad_noise_norms)
-                    np.save('/home/vincent/repos/rlpyt/log/gradnoisenorms' + str(itr) + '_' + str(self.seed),
-                            grad_noise_norms)
-                    np.save('/home/vincent/repos/rlpyt/log/cosines' + str(itr) + '_' + str(self.seed),
-                            cosines)
+                        p_noise = np.linalg.norm(policy_gradients[i] - mean_p_grad)
+                        v_noise = np.linalg.norm(value_gradients[i] - mean_v_grad)
+                        p_grad_noise_norms.append(p_noise)
+                        v_grad_noise_norms.append(v_noise)
+                        p_cos = -1 * (cosine(policy_gradients[i], mean_p_grad) - 1)
+                        v_cos = -1 * (cosine(value_gradients[i], mean_v_grad) - 1)
+                        p_cosines.append(p_cos)
+                        v_cosines.append(v_cos)
+                    print(p_grad_noise_norms)
+                    print(v_grad_noise_norms)
+                    np.save('/home/vincent/repos/rlpyt/log/policy_gradnoisenorms' + str(itr) + '_' + str(self.seed),
+                            p_grad_noise_norms)
+                    np.save('/home/vincent/repos/rlpyt/log/value_gradnoisenorms' + str(itr) + '_' + str(self.seed),
+                            v_grad_noise_norms)
+
+                    np.save('/home/vincent/repos/rlpyt/log/policy_cosines' + str(itr) + '_' + str(self.seed),
+                            p_cosines)
+                    np.save('/home/vincent/repos/rlpyt/log/value_cosines' + str(itr) + '_' + str(self.seed),
+                            v_cosines)
+
                     np.save('/home/vincent/repos/rlpyt/log/value_diffs' + str(itr) + '_' + str(self.seed),
                             value_diffs)
                     np.save('/home/vincent/repos/rlpyt/log/norm_rewards' + str(itr) + '_' + str(self.seed),
