@@ -4,18 +4,18 @@ from rlpyt.utils.launching.exp_launcher import run_experiments
 from rlpyt.utils.launching.variant import make_variants, VariantLevel
 
 affinity_code = encode_affinity(
-    n_cpu_core=8,
+    n_cpu_core=6,
     n_gpu=1,
     contexts_per_gpu=1,
-    hyperthread_offset=None,
+    hyperthread_offset=6,
     n_socket=1,
     # cpu_per_run=2,
 )
-runs_per_setting = 5
+runs_per_setting = 10
 variant_levels_1M = list()
 variant_levels_3M = list()
 
-n_steps = [3e6]
+n_steps = [1e6]
 lrs = [3e-4]
 values = list(zip(n_steps, lrs))
 dir_names = ["{}-{}".format(*v) for v in values]
@@ -29,7 +29,7 @@ variant_levels_1M.append(VariantLevel(keys, values, dir_names))
 # variant_levels_3M.append(VariantLevel(keys, values, dir_names))
 
 
-env_ids = ["Walker2d-v2"]
+env_ids = ["Walker2d-v2"]#, "HalfCheetah-v2", "Humanoid-v2", "Swimmer-v2", "Hopper-v2"]
 values = list(zip(env_ids))
 dir_names = ["{}".format(*v) for v in values]
 keys = [("env", "id")]
@@ -49,7 +49,7 @@ log_dirs = log_dirs_1M #+ log_dirs_3M
 
 default_config_key = "ppo_1M_serial"
 script = "rlpyt/experiments/scripts/mujoco/pg/train/mujoco_ff_ppo_serial.py"
-experiment_title = "ppo_mujoco_actual_both_norm_long"
+experiment_title = "ppo_no_clip"
 
 run_experiments(
     script=script,

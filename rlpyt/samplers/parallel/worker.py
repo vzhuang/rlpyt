@@ -92,7 +92,7 @@ def sampling_process(common_kwargs, worker_kwargs):
             eval_collector.collect_evaluation(ctrl.itr.value)  # Traj_infos to queue inside.
         else:
             agent_inputs, traj_infos, completed_infos = collector.collect_batch(
-                agent_inputs, traj_infos, ctrl.itr.value)
+                agent_inputs, traj_infos, ctrl.itr.value, discount=c.discount)
             for info in completed_infos:
                 c.traj_infos_queue.put(info)
         ctrl.barrier_out.wait()

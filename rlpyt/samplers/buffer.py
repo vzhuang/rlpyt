@@ -18,7 +18,7 @@ def build_samples_buffer(agent, env, batch_spec, bootstrap_value=False,
             mgr = mp.Manager()
             examples = mgr.dict()  # Examples pickled back to master.
             w = mp.Process(target=get_example_outputs,
-                args=(agent, env, examples, subprocess), kwargs=(discount))
+                args=(agent, env, examples, subprocess))
             w.start()
             w.join()
         else:
@@ -54,13 +54,12 @@ def build_samples_buffer(agent, env, batch_spec, bootstrap_value=False,
         env_info=env_info,
         discounted_return=discounted_return
     )
-    print('hell yeah created env buffer')
     samples_np = Samples(agent=agent_buffer, env=env_buffer)
     samples_pyt = torchify_buffer(samples_np)
     return samples_pyt, samples_np, examples
 
 
-def get_example_outputs(agent, env, examples, subprocess=False, discount=1.):
+def get_example_outputs(agent, env, examples, subprocess=False, discount=0.99):
     """Do this in a sub-process to avoid setup conflict in master/workers (e.g.
     MKL)."""
     if subprocess:  # i.e. in subprocess.

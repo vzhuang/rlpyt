@@ -99,7 +99,7 @@ class SerialSampler(BaseSampler):
         """
         # self.samples_np[:] = 0  # Unnecessary and may take time.
         agent_inputs, traj_infos, completed_infos = self.collector.collect_batch(
-            self.agent_inputs, self.traj_infos, itr)
+            self.agent_inputs, self.traj_infos, itr, discount=self.discount)
         self.collector.reset_if_needed(agent_inputs)
         self.agent_inputs = agent_inputs
         self.traj_infos = traj_infos

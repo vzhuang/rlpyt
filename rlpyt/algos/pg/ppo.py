@@ -191,7 +191,8 @@ class PPO(PolicyGradientAlgo):
                 self.update_counter += 1
         if self.linear_lr_schedule:
             self.lr_scheduler.step()
-            self.ratio_clip = self._ratio_clip * (self.n_itr - itr) / self.n_itr
+            if self.ratio_clip:
+                self.ratio_clip = self._ratio_clip * (self.n_itr - itr) / self.n_itr
 
         return opt_info, ratios, samples.env.prev_reward
 
@@ -252,8 +253,11 @@ class PPO(PolicyGradientAlgo):
         ratio = dist.likelihood_ratio(action, old_dist_info=old_dist_info,
             new_dist_info=dist_info)
         surr_1 = ratio * advantage
-        clipped_ratio = torch.clamp(ratio, 1. - self.ratio_clip,
-            1. + self.ratio_clip)
+        if self.ratio_clip:
+            clipped_ratio = torch.clamp(ratio, 1. - self.ratio_clip,
+                1. + self.ratio_clip)
+        else:
+            clipped_ratio = ratio
         surr_2 = clipped_ratio * advantage
         surrogate = torch.min(surr_1, surr_2)
         pi_loss = - valid_mean(surrogate, valid)
@@ -261,15 +265,21 @@ class PPO(PolicyGradientAlgo):
         value_error1 = 0.5 * (value - return_) ** 2
         # clip by old_values
         value_diff = value - old_value
-        clipped_value = old_value + torch.clamp(value - old_value, -self.ratio_clip, self.ratio_clip)
+        if self.ratio_clip:
+            clipped_value = old_value + torch.clamp(value - old_value, -self.ratio_clip, self.ratio_clip)
         value_error1 = 0.5 * (value - return_) ** 2
-        value_error2 = 0.5 * (clipped_value - return_) ** 2
+        value_error2 = torch.zeros(value_error1.shape)
+        # value_error2 = 0.5 * (clipped_value - return_) ** 2
         # print('old', old_value)
         # print('new', value)
         # print('clipped', clipped_value)
         # print(valid_mean(value_error1, valid), valid_mean(value_error2, valid))
-        value_loss = self.value_loss_coeff * torch.max(valid_mean(value_error1, valid),
-                                                       valid_mean(value_error2, valid))
+        err1 = valid_mean(value_error1, valid)
+        err2 = valid_mean(value_error2, valid)
+        # print(err1, err2)
+        # if err2 > err1:
+        #     print('VALUE CLIPPED')
+        value_loss = self.value_loss_coeff * torch.max(err1, err2)
 
         entropy = dist.mean_entropy(dist_info, valid)
         entropy_loss = - self.entropy_loss_coeff * entropy

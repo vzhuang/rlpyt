@@ -52,8 +52,8 @@ class PolicyGradientAlgo(RlAlgorithm):
             samples.agent.agent_info.value, samples.agent.bootstrap_value, samples.env.discounted_return)
         done = done.type(reward.dtype)
 
-        print()
-        print('discounted return', discounted_return)
+        # print()
+        # print('discounted return', discounted_return)
 
         if self.rets is None:
             self.rets = np.zeros(len(reward))
@@ -67,8 +67,8 @@ class PolicyGradientAlgo(RlAlgorithm):
 
         reward = torch.div(reward, np.mean(np.sqrt(self.ret_rms.var + 1e-8)))
 
-        print('rets', self.rets)
-        print('std', np.mean(np.sqrt(self.ret_rms.var + 1e-8)))
+        # print('rets', self.rets)
+        # print('std', np.mean(np.sqrt(self.ret_rms.var + 1e-8)))
 
         if self.gae_lambda == 1:  # GAE reduces to empirical discounted.
             return_ = discount_return(reward, done, bv, self.discount)
@@ -76,6 +76,9 @@ class PolicyGradientAlgo(RlAlgorithm):
         else:
             advantage, return_ = generalized_advantage_estimation(
                 reward, value, done, bv, self.discount, self.gae_lambda)
+
+        # print('value', value)
+        # print('bootstrap_value', bv)
 
         if not self.mid_batch_reset or self.agent.recurrent:
             valid = valid_from_done(done)  # Recurrent: no reset during training.

@@ -254,7 +254,7 @@ class MinibatchRl(MinibatchRlBase):
         for itr in range(n_itr):
             logger.set_iteration(itr)
             with logger.prefix(f"itr #{itr} "):
-                if itr % 100 == 0:
+                if itr % 200 == 0:
                     # try to log distribution gradient norm of agent
                     # gradients = []
                     policy_gradients = []
@@ -264,7 +264,7 @@ class MinibatchRl(MinibatchRlBase):
                     all_rewards = []
                     all_unnorm_rewards = []
 
-                    num_iters = 400
+                    num_iters = 100
                     all_returns = []
                     for i in range(num_iters):
                         samples, traj_infos = self.sampler.obtain_samples(itr)
@@ -327,7 +327,7 @@ class MinibatchRl(MinibatchRlBase):
                 samples, traj_infos = self.sampler.obtain_samples(itr)
                 self.agent.train_mode(itr)
                 opt_info, ratios, rews = self.algo.optimize_agent(itr, samples)
-                if itr % 10 == 0:
+                if itr % 100 == 0:
                     np.save('/home/vincent/repos/rlpyt/log/adv_ratios' + str(itr) + '_' + str(self.seed),
                             ratios)
                     # np.save('/home/vincent/repos/rlpyt/log/rewards' + str(itr) + '_' + str(self.seed),
@@ -340,6 +340,7 @@ class MinibatchRl(MinibatchRlBase):
     def initialize_logging(self):
         self._traj_infos = deque(maxlen=self.log_traj_window)
         self._new_completed_trajs = 0
+        logger.log("seed: %s" % self.seed)
         logger.log(f"Optimizing over {self.log_interval_itrs} iterations.")
         super().initialize_logging()
         self.pbar = ProgBarCounter(self.log_interval_itrs)

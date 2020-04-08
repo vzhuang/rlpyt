@@ -35,6 +35,7 @@ class ParallelSamplerBase(BaseSampler):
             world_size=1,
             rank=0,
             worker_process=None,
+            discount=0.99,
             ):
         """
         Creates an example instance of the environment for agent initialization
@@ -179,7 +180,7 @@ class ParallelSamplerBase(BaseSampler):
     def _build_buffers(self, env, bootstrap_value):
         self.samples_pyt, self.samples_np, examples = build_samples_buffer(
             self.agent, env, self.batch_spec, bootstrap_value,
-            agent_shared=True, env_shared=True, subprocess=True)
+            agent_shared=True, env_shared=True, subprocess=True, discount=self.discount)
         return examples
 
     def _build_parallel_ctrl(self, n_worker):
@@ -207,6 +208,7 @@ class ParallelSamplerBase(BaseSampler):
             max_decorrelation_steps=self.max_decorrelation_steps,
             torch_threads=affinity.get("worker_torch_threads", 1),
             global_B=global_B,
+            discount=self.discount
         )
         if self.eval_n_envs > 0:
             common_kwargs.update(dict(
