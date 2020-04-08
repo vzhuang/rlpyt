@@ -142,7 +142,6 @@ class PPO(PolicyGradientAlgo):
         return_, advantage, valid, value, reward, pre_reward = self.process_returns(samples)
         if hasattr(self.agent, "update_obs_rms"):
             self.agent.update_obs_rms(agent_inputs.observation)
-        return_, advantage, valid, value = self.process_returns(samples)
         loss_inputs = LossInputs(  # So can slice all.
             agent_inputs=agent_inputs,
             action=samples.agent.action,

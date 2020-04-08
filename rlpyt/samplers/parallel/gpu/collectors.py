@@ -67,7 +67,7 @@ class GpuWaitResetCollector(DecorrelatingStartCollector):
         # next batch.
         self.temp_observation = buffer_method(self.step_buffer_np.observation, "copy")
 
-    def collect_batch(self, agent_inputs, traj_infos, itr):
+    def collect_batch(self, agent_inputs, traj_infos, itr, discount=1.):
         """Params agent_inputs and itr unused."""
         act_ready, obs_ready = self.sync.act_ready, self.sync.obs_ready
         step = self.step_buffer_np
