@@ -8,7 +8,7 @@ config = dict(
     algo=dict(
         discount=0.99,
         learning_rate=3e-4,
-        clip_grad_norm=1e6,
+        clip_grad_norm=1e3,
         entropy_loss_coeff=0.0,
         gae_lambda=0.95,
         minibatches=32,
@@ -16,10 +16,11 @@ config = dict(
         ratio_clip=0.2,
         normalize_advantage=True,
         linear_lr_schedule=True,
+        normalize_rewards=True,
         # bootstrap_timelimit=False,
     ),
     env=dict(id="Hopper-v3"),
-    model=dict(normalize_observation=False),
+    model=dict(normalize_observation=True),
     optim=dict(),
     runner=dict(
         n_steps=1e6,
@@ -29,6 +30,7 @@ config = dict(
         batch_T=2048,
         batch_B=1,
         max_decorrelation_steps=0,
+        discount=0.99
     ),
 )
 

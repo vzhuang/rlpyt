@@ -265,6 +265,7 @@ class MinibatchRl(MinibatchRlBase):
     def initialize_logging(self):
         self._traj_infos = deque(maxlen=self.log_traj_window)
         self._new_completed_trajs = 0
+        logger.log("seed %d" % self.seed)
         logger.log(f"Optimizing over {self.log_interval_itrs} iterations.")
         super().initialize_logging()
         self.pbar = ProgBarCounter(self.log_interval_itrs)

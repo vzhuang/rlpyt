@@ -1,10 +1,12 @@
 
-# import torch
 from collections import namedtuple
+
+import torch
 
 from rlpyt.algos.base import RlAlgorithm
 from rlpyt.algos.utils import (discount_return, generalized_advantage_estimation,
-    valid_from_done)
+                               valid_from_done)
+from rlpyt.models.running_mean_std import RunningMeanStdModel
 
 # Convention: traj_info fields CamelCase, opt_info fields lowerCamelCase
 OptInfo = namedtuple("OptInfo", ["loss", "gradNorm", "entropy", "perplexity"])
@@ -35,8 +37,9 @@ class PolicyGradientAlgo(RlAlgorithm):
         self.n_itr = n_itr
         self.batch_spec = batch_spec
         self.mid_batch_reset = mid_batch_reset
+        self.rets_rms = None
 
-    def process_returns(self, samples):
+    def process_returns(self, samples, normalize_rewards=False):
         """
         Compute bootstrapped returns and advantages from a minibatch of
         samples.  Uses either discounted returns (if ``self.gae_lambda==1``)
@@ -44,9 +47,18 @@ class PolicyGradientAlgo(RlAlgorithm):
         according to ``mid_batch_reset`` or for recurrent agent.  Optionally,
         normalize advantages.
         """
-        reward, done, value, bv = (samples.env.reward, samples.env.done,
-            samples.agent.agent_info.value, samples.agent.bootstrap_value)
+        reward, done, value, bv, discounted_return = (samples.env.reward, samples.env.done,
+            samples.agent.agent_info.value, samples.agent.bootstrap_value, samples.env.discounted_return)
         done = done.type(reward.dtype)
+
+        if self.normalize_rewards:
+            if not self.rets_rms:
+                self.rets_rms = RunningMeanStdModel(torch.Size([1]))
+            discounted_return = discounted_return.view(-1)
+            discounted_return = discounted_return.unsqueeze(1)
+            self.rets_rms.update(discounted_return)
+            std_dev = torch.sqrt(self.rets_rms.var)
+            reward = torch.div(reward, std_dev)
 
         if self.gae_lambda == 1:  # GAE reduces to empirical discounted.
             return_ = discount_return(reward, done, bv, self.discount)

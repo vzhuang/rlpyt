@@ -28,6 +28,7 @@ class A2C(PolicyGradientAlgo):
             initial_optim_state_dict=None,
             gae_lambda=1,
             normalize_advantage=False,
+            normalize_rewards=False,
             ):
         """Saves the input settings."""
         if optim_kwargs is None:
@@ -84,7 +85,7 @@ class A2C(PolicyGradientAlgo):
         else:
             dist_info, value = self.agent(*agent_inputs)
         # TODO: try to compute everyone on device.
-        return_, advantage, valid = self.process_returns(samples)
+        return_, advantage, valid = self.process_returns(samples, self.normalize_rewards)
 
         dist = self.agent.distribution
         logli = dist.log_likelihood(samples.agent.action, dist_info)

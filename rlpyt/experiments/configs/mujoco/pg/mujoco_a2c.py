@@ -12,6 +12,7 @@ config = dict(
         entropy_loss_coeff=0.0,
         value_loss_coeff=0.5,
         normalize_advantage=True,
+        normalize_rewards=True,
     ),
     env=dict(id="Hopper-v3"),
     model=dict(normalize_observation=False),
@@ -24,6 +25,7 @@ config = dict(
         batch_T=100,
         batch_B=8,
         max_decorrelation_steps=1000,
+        discount=0.99
     ),
 )
 

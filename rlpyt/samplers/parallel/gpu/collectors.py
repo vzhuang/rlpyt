@@ -15,7 +15,7 @@ class GpuResetCollector(DecorrelatingStartCollector):
 
     mid_batch_reset = True
 
-    def collect_batch(self, agent_inputs, traj_infos, itr):
+    def collect_batch(self, agent_inputs, traj_infos, itr, discount=1.):
         """Params agent_inputs and itr unused."""
         act_ready, obs_ready = self.sync.act_ready, self.sync.obs_ready
         step = self.step_buffer_np
@@ -43,6 +43,11 @@ class GpuResetCollector(DecorrelatingStartCollector):
             agent_buf.action[t] = step.action  # OPTIONAL BY SERVER
             env_buf.reward[t] = step.reward
             env_buf.done[t] = step.done
+            if t == 0:
+                env_buf.discounted_return[t] = step.reward
+            else:
+                env_buf.discounted_return[t] = env_buf.discounted_return[t] = (env_buf.discounted_return[t-1]) * \
+                                                                              (1 - env_buf.done[t-1]) * discount + step.reward
             if step.agent_info:
                 agent_buf.agent_info[t] = step.agent_info  # OPTIONAL BY SERVER
             obs_ready.release()  # Ready for server to use/write step buffer.
@@ -67,7 +72,7 @@ class GpuWaitResetCollector(DecorrelatingStartCollector):
         # next batch.
         self.temp_observation = buffer_method(self.step_buffer_np.observation, "copy")
 
-    def collect_batch(self, agent_inputs, traj_infos, itr):
+    def collect_batch(self, agent_inputs, traj_infos, itr, discount=1.):
         """Params agent_inputs and itr unused."""
         act_ready, obs_ready = self.sync.act_ready, self.sync.obs_ready
         step = self.step_buffer_np
@@ -108,6 +113,10 @@ class GpuWaitResetCollector(DecorrelatingStartCollector):
             agent_buf.action[t] = step.action  # OPTIONAL BY SERVER
             env_buf.reward[t] = step.reward
             env_buf.done[t] = step.done
+            if t == 0:
+                env_buf.discounted_return[t] = r
+            else:
+                env_buf.discounted_return[t] = (env_buf.discounted_return[t-1] * (1 - env_buf.done[t-1])) * discount + r
             if step.agent_info:
                 agent_buf.agent_info[t] = step.agent_info  # OPTIONAL BY SERVER
             obs_ready.release()  # Ready for server to use/write step buffer.

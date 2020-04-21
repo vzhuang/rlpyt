@@ -64,6 +64,7 @@ class SerialSampler(BaseSampler):
             agent=agent,
             global_B=global_B,
             env_ranks=env_ranks,  # Might get applied redundantly to agent.
+            discount=self.discount,
         )
         if self.eval_n_envs > 0:  # May do evaluation.
             eval_envs = [self.EnvCls(**self.eval_env_kwargs)
