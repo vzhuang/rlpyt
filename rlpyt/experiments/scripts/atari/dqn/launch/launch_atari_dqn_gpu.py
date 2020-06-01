@@ -11,11 +11,11 @@ affinity_code = encode_affinity(
     n_socket=1,
     # cpu_per_run=2,
 )
-runs_per_setting = 2
+runs_per_setting = 3
 experiment_title = "atari_dqn_basic"
 variant_levels = list()
 
-games = ["pong", "seaquest", "qbert", "chopper_command"]
+games = ["pong"]
 values = list(zip(games))
 dir_names = ["{}".format(*v) for v in values]
 keys = [("env", "game")]
