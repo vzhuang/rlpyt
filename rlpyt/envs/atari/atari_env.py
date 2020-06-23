@@ -10,6 +10,8 @@ from rlpyt.spaces.int_box import IntBox
 from rlpyt.utils.quick_args import save__init__args
 from rlpyt.samplers.collections import TrajInfo
 
+from scipy.stats import levy_stable
+
 
 W, H = (80, 104)  # Crop two rows, then downsample by 2x (fast, clean image).
 
@@ -73,6 +75,9 @@ class AtariEnv(Env):
                  max_start_noops=30,
                  repeat_action_probability=0.,
                  horizon=27000,
+                 noise_class=None,
+                 noise_scale=1.,
+                 noise_nonzero_only=True
                  ):
         save__init__args(locals(), underscore=True)
         # ALE
@@ -124,6 +129,14 @@ class AtariEnv(Env):
             self._reset_obs()  # Internal reset.
         self._update_obs()
         reward = np.sign(game_score) if self._clip_reward else game_score
+        # if reward != 0:
+        if self._noise_class == "gaussian":
+            if reward != 0 or not self._noise_nonzero_only:
+                reward = np.random.normal(loc=reward, scale=self._noise_scale, size=1)[0]
+        elif self._noise_class == "levy":
+            if reward != 0 or not self._noise_nonzero_only:
+                reward = levy_stable.rvs(1.1, 0., loc=reward, scale=self._noise_scale, size=1)[0]
+
         game_over = self.ale.game_over() or self._step_counter >= self.horizon
         done = game_over or (self._episodic_lives and lost_life)
         info = EnvInfo(game_score=game_score, traj_done=game_over)
@@ -137,7 +150,7 @@ class AtariEnv(Env):
             shape = img.shape
             img = img.reshape(shape[0] * shape[1], shape[2])
         else:
-            img = img[-1]
+            img = img[-1] 
         cv2.imshow(self._game, img)
         cv2.waitKey(wait)
 

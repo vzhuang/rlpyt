@@ -15,11 +15,14 @@ config = dict(
         minibatches=4,
         epochs=4,
     ),
-    env=dict(game="pong"),
+    env=dict(game="pong",
+             noise_scale=None,
+             noise_nonzero_only=None,
+             noise_class=None),
     model=dict(),
     optim=dict(),
     runner=dict(
-        n_steps=50e6,
+        n_steps=5e6,
         # log_interval_steps=1e3,
     ),
     sampler=dict(

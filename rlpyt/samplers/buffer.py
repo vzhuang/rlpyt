@@ -7,6 +7,8 @@ from rlpyt.agents.base import AgentInputs
 from rlpyt.samplers.collections import (Samples, AgentSamples, AgentSamplesBsv,
     EnvSamples)
 
+from scipy.stats import levy_stable
+
 
 def build_samples_buffer(agent, env, batch_spec, bootstrap_value=False,
         agent_shared=True, env_shared=True, subprocess=True, examples=None):

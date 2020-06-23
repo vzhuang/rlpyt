@@ -20,6 +20,10 @@ config = dict(
     env=dict(
         game="pong",
         episodic_lives=True,
+        clip_reward=False,
+        noise_class=None,
+        noise_scale=None,
+        noise_nonzero_only=None
     ),
     eval_env=dict(
         game="pong",  # NOTE: update in train script!
@@ -29,8 +33,8 @@ config = dict(
     model=dict(dueling=False),
     optim=dict(),
     runner=dict(
-        n_steps=50e6,
-        log_interval_steps=1e6,
+        n_steps=5e6,
+        log_interval_steps=1e5,
     ),
     sampler=dict(
         batch_T=2,

@@ -5,15 +5,35 @@ from rlpyt.utils.launching.variant import make_variants, VariantLevel
 
 script = "rlpyt/experiments/scripts/atari/dqn/train/atari_dqn_gpu.py"
 affinity_code = encode_affinity(
-    n_cpu_core=4,
-    n_gpu=1,
+    n_cpu_core=3,
+    n_gpu=3,
     hyperthread_offset=8,
     n_socket=1,
     # cpu_per_run=2,
 )
 runs_per_setting = 3
-experiment_title = "atari_dqn_basic"
+experiment_title = "pong_dqn_search"
 variant_levels = list()
+
+noise_classes = ["levy"]
+values = list(zip(noise_classes))
+dir_names = ["{}".format(*v) for v in values]
+keys = [("env", "noise_class")]
+variant_levels.append(VariantLevel(keys, values, dir_names))
+
+noise_scales = [0.1, 0.5, 1., 5.]
+values = list(zip(noise_scales))
+dir_names = ["{}".format(*v) for v in values]
+keys = [("env", "noise_scale")]
+variant_levels.append(VariantLevel(keys, values, dir_names))
+
+
+noise_nonzero_onlys = [True, False]
+values = list(zip(noise_nonzero_onlys))
+dir_names = ["{}".format(*v) for v in values]
+keys = [("env", "noise_nonzero_only")]
+variant_levels.append(VariantLevel(keys, values, dir_names))
+
 
 games = ["pong"]
 values = list(zip(games))

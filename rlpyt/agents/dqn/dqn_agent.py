@@ -11,6 +11,9 @@ from rlpyt.utils.logging import logger
 from rlpyt.utils.collections import namedarraytuple
 from rlpyt.models.utils import update_state_dict
 
+import numpy as np
+from collections import defaultdict
+
 
 AgentInfo = namedarraytuple("AgentInfo", "q")
 
@@ -41,6 +44,15 @@ class DqnAgent(EpsilonGreedyAgentMixin, BaseAgent):
         self.distribution = EpsilonGreedy(dim=env_spaces.action.n)
         if env_ranks is not None:
             self.make_vec_eps(global_B, env_ranks)
+
+        D = env_spaces.observation.shape
+        print('observation shape D')
+
+        self.hash_dim = 128
+
+        self.sim_hash_matrix = np.random.normal(128, D)
+
+        self.sim_hash_counts = defaultdict(lambda: defaultdict(int))
 
     def to_device(self, cuda_idx=None):
         super().to_device(cuda_idx)
